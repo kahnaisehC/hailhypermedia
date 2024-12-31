@@ -1,0 +1,43 @@
+{{define "contacts"}}
+{{template "header"}}
+
+
+<form action="/contacts" method="get" class="tool-bar">
+	<label for="search">Search!</label>
+	<input id="search" type="search" name="q" value="{{.Q}}" />
+	<input type="submit" value="Search"/>
+</form>
+
+<table>
+	<caption>
+		Contact list!!
+	</caption>
+	<thead>
+		<tr>
+			<th scope="col">Name</th>
+			<th scope="col">Email</th>
+			<th scope="col">Phone</th>
+			<th scope="col">Links</th>
+		</tr>
+	</thead>
+	<tbody>
+{{range $index, $contact := .Contacts}}
+		<tr>
+
+
+			<th scope="row">{{$contact.Name}}</th>
+			<td>{{$contact.Email}}</td>
+			<td>{{$contact.Phone}}</td>
+			<td><a href="/contact/{{ $contact.Id }}/edit">Edit</a></td>
+			<td> <a href="/contact/{{ $contact.Id }}">View</a> </td>
+		</tr>
+
+{{end}}
+
+	</tbody>
+</table>
+
+<a href="/contacts/new">Add contact</a>
+
+{{template "footer"}}
+{{end}}

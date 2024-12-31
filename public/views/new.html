@@ -1,0 +1,41 @@
+{{define "new"}}
+{{template "header"}}
+
+<form action="contacts/new" method="post">
+	<fieldset>
+
+	<legend>Contact Vals! </legend>
+		<p>
+			<label for="name">Name: </label>
+			<input type="text" id="name" name="name" />
+			<span class="error">
+				{{ .Errors.Name }} 
+			</span>
+		</p>
+
+		<p>
+			<label for="email">Email: </label>
+			<input type="email" id="email" name="email" />
+			<span class="error">
+				{{ .Errors.Email }} 
+			</span>
+		</p>
+		<p>
+			<label for="phone">Phone: </label>
+			<input type="text" id="phone" name="phone" />
+			<span class="error">
+				{{ .Errors.Phone }} 
+			</span>
+		</p>
+		<input type="submit" value="Create contact!" />
+	</fieldset>
+</form>
+
+<a href "/contacts">Back</a>
+
+
+
+
+
+{{template "footer"}}
+{{end}}
