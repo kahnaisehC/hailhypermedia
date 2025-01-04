@@ -1,11 +1,11 @@
-{{define "new"}}
+{{define "edit"}}
 {{template "header"}}
 
 
 {{if .Error}}
 	<p> {{.Error}} </p>
 {{end}}
-<form action="/contacts/new" method="post">
+<form action="/contacts/{{.Contact.Id}}/edit" method="post">
 	<fieldset>
 
 	<legend>Contact Vals! </legend>
@@ -21,7 +21,7 @@
 			<label for="email">Email: </label>
 			<input type="email" id="email" name="email" 
 				{{if .Contact.Email}}
-					value= {{.Contact.Email}}
+					value = {{.Contact.Email}}
 				{{end}} />
 		</p>
 		<p>
@@ -31,15 +31,15 @@
 					value= {{.Contact.Email}}
 				{{end}} />
 		</p>
-		<input type="submit" value="Create contact!" />
+		<input type="submit" value="Edit contact!" />
 	</fieldset>
 </form>
 
+<form action="/contacts/{{.Contact.Id}}/delete" method="POST">
+	<input type="submit" value="Delete" />
+</form>
+
 <a href="/contacts">Back</a>
-
-
-
-
 
 {{template "footer"}}
 {{end}}

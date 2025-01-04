@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/csv"
-	"fmt"
 	"html/template"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 
+	"github.com/kahnaisehC/hailhypermedia/contacts"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -21,81 +19,117 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-type Contact struct {
-	Id    int
-	Name  string
-	Email string
-	Phone string
-}
-
-func filterContacts(reg string, contacts []Contact) []Contact {
-	return contacts
-}
-
-func getContacts() ([]Contact, error) {
-	var contacts []Contact
-	f, err := os.Open("contacts.csv")
-	if err != nil {
-		f, err = os.Create("contacts.csv")
-		if err != nil {
-			return []Contact{}, err
-		}
-	}
-	defer f.Close()
-	reader := csv.NewReader(f)
-	reader.FieldsPerRecord = -1
-	data, err := reader.ReadAll()
-	if err != nil {
-		return []Contact{}, err
-	}
-	for _, csvContact := range data {
-		contactId, err := strconv.Atoi(csvContact[0])
-		if err != nil {
-			fmt.Printf("cannot convert %s to integer\n", csvContact[0])
-			continue
-		}
-		contactName := csvContact[1]
-		contactEmail := csvContact[2]
-		contactPhone := csvContact[3]
-
-		contact := Contact{
-			contactId,
-			contactName,
-			contactEmail,
-			contactPhone,
-		}
-		contacts = append(contacts, contact)
-	}
-
-	return contacts, nil
-}
-
 func Contacts(c echo.Context) error {
-	contacts, err := getContacts()
+	contactList, err := contacts.GetContacts()
 	if err != nil {
 		return err
 	}
 
 	queryParam := c.QueryParam("q")
 	if queryParam != "" {
-		contacts = filterContacts(queryParam, contacts)
+		contactList = contacts.FilterContacts(queryParam, contactList)
 	}
 
 	return c.Render(http.StatusOK, "contacts", struct {
-		Contacts []Contact
+		Contacts []contacts.Contact
 		Q        string
 	}{
-		Contacts: contacts,
+		Contacts: contactList,
 		Q:        queryParam,
 	})
 }
 
-func NewContactView(c echo.Context) error {
-	return c.Render(http.StatusOK, "new", "")
+func GetNewContact(c echo.Context) error {
+	return c.Render(http.StatusOK, "new", struct {
+		Error   error
+		Contact contacts.Contact
+	}{
+		nil,
+		contacts.Contact{},
+	})
 }
 
-func CreateContact(c echo.Context) error {
-	return c.Render(http.StatusOK, "new", "")
+// TODO: SOME WAY TO FLASH THE MESSAGE
+func PostNewContact(c echo.Context) error {
+	var newContact contacts.Contact
+	newContact.Id = -1
+	newContact.Name = c.FormValue("name")
+	newContact.Email = c.FormValue("email")
+	newContact.Phone = c.FormValue("phone")
+
+	err := contacts.CreateContact(newContact)
+	if err != nil {
+		return c.Render(http.StatusOK, "new", struct {
+			Error   error
+			Contact contacts.Contact
+		}{
+			err,
+			newContact,
+		})
+	}
+	return c.Redirect(http.StatusSeeOther, "/contacts")
+}
+
+func GetContactView(c echo.Context) error {
+	return c.String(http.StatusOK, c.Param("id"))
+}
+
+func GetContactEdit(c echo.Context) error {
+	contactId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+	contact, err := contacts.GetContact(contactId)
+	if err != nil {
+		return c.String(http.StatusNotFound, err.Error())
+	}
+	return c.Render(http.StatusOK, "edit",
+		struct {
+			Contact contacts.Contact
+			Error   error
+		}{
+			Contact: contact,
+			Error:   nil,
+		})
+}
+
+func PostContactEdit(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+	}
+	name := c.FormValue("name")
+	email := c.FormValue("email")
+	phone := c.FormValue("phone")
+
+	err = contacts.UpdateContact(id, name, email, phone)
+	if err != nil {
+		c.Render(http.StatusBadRequest, "edit", struct {
+			Error   error
+			Contact contacts.Contact
+		}{
+			Error: err,
+			Contact: contacts.Contact{
+				Id:    id,
+				Name:  name,
+				Email: email,
+				Phone: phone,
+			},
+		})
+	}
+	return c.Redirect(http.StatusSeeOther, "/contacts")
+}
+
+func PostContactDelete(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "invalid id")
+	}
+	err = contacts.DeleteContact(id)
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+	return c.Redirect(http.StatusSeeOther, "/contacts")
 }
 
 func main() {
@@ -112,10 +146,22 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.Redirect(http.StatusMovedPermanently, "/contacts")
 	})
+
+	// DONE
 	e.GET("/contacts", Contacts)
 
-	e.GET("/contacts/new", NewContactView)
-	e.POST("/contacts/new", CreateContact)
+	e.GET("/contacts/:id", GetContactView)
+
+	// DONE
+	e.GET("/contacts/:id/edit", GetContactEdit)
+	e.POST("/contacts/:id/edit", PostContactEdit)
+
+	// DONE
+	e.POST("/contacts/:id/delete", PostContactDelete)
+
+	// DONE
+	e.GET("/contacts/new", GetNewContact)
+	e.POST("/contacts/new", PostNewContact)
 
 	e.Logger.Fatal(e.Start(":1323"))
 }
